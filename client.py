@@ -424,8 +424,3 @@ def get_company_overview(symbol: str) -> dict:
     """Alpha Vantage Fundamental Data: Company Overview (returns raw JSON)."""
     # return _cached_api_call("OVERVIEW", symbol)
     return MOCK_OVERVIEW
-
-
-def get_income_statement(symbol: str) -> dict:
-    """Alpha Vantage Fundamental Data: Income Statement (returns raw JSON)."""
-    return _cached_api_call("INCOME_STATEMENT", symbol)

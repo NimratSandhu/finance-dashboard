@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-USER user
+USER root
 
 EXPOSE 7860
 

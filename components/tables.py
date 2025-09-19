@@ -1,4 +1,3 @@
-import dash_table
 import pandas as pd
 import dash_ag_grid as dag
 

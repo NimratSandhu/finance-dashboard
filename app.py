@@ -34,6 +34,12 @@ app.layout = dbc.Container(
         dbc.Row(
             [dbc.Col(html.H1("WindBorne Vendor Dashboard"), width=12)], justify="center"
         ),
+        dbc.Row([
+            dbc.Col([
+                dbc.Button("Download CSV", id="btn-export-csv", color="info", className="mt-2"),
+                dcc.Download(id="download-overview-csv")
+            ], width={"size": 10, "offset": 0})
+        ], className="mb-4"),
         dbc.Row([dbc.Col(overview_table, id="overview-table-section")]),
         html.Hr(),
         dbc.Row(
@@ -118,6 +124,14 @@ def bubble_bar_chart(selected_target_x, selected_target_y):
         overview_df, selected_target_x, selected_target_y
     )
     return bubble_chart
+
+@callback(
+    Output("download-overview-csv", "data"),
+    Input("btn-export-csv", "n_clicks"),
+    prevent_initial_call=True
+)
+def export_overview_csv(n_clicks):
+    return dcc.send_data_frame(overview_df.to_csv, "vendor_overview.csv", index=False)
 
 
 if __name__ == "__main__":

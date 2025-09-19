@@ -11,7 +11,7 @@ from urllib3.util.retry import Retry
 load_dotenv()
 API_KEY = os.getenv("ALPHAVANTAGE_KEY")
 BASE_URL = "https://www.alphavantage.co/query"
-CACHE_DIR = Path("cache")
+CACHE_DIR = Path(os.getenv("CACHE_DIR", "/tmp/vendor_cache"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DB = CACHE_DIR / "vendor_cache.sqlite"
 TTL_BY_FUNCTION = {

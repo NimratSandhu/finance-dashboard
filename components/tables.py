@@ -1,40 +1,6 @@
 import dash_table
 import pandas as pd
-
-def format_intraday_data(time_series_json):
-    """
-    Convert Alpha Vantage time series JSON to a DataFrame.
-    """
-    df = pd.DataFrame.from_dict(time_series_json, orient='index')
-    df.index = pd.to_datetime(df.index)
-    df = df.rename(columns=lambda s: s.split('. ')[1])  # Remove numeric prefixes if needed
-    return df
-
-def build_vendor_table(symbol_data_dict):
-    """
-    Build a Dash DataTable for all vendors.
-    symbol_data_dict: {symbol: time_series_dict}
-    """
-    # Collect latest record for each symbol
-    latest_records = []
-    for symbol, series in symbol_data_dict.items():
-        df = format_intraday_data(series)
-        latest_row = df.iloc[0]  # First row is most recent
-        row_dict = latest_row.to_dict()
-        row_dict["Symbol"] = symbol
-        latest_records.append(row_dict)
-
-    # Columns to show
-    columns = [{"name": col, "id": col} for col in ["Symbol", "open", "high", "low", "close", "volume"]]
-
-    return dash_table.DataTable(
-        data=latest_records,
-        columns=columns,
-        style_table={"backgroundColor": "#333"},
-        style_cell={"color": "#fff", "backgroundColor": "#222"},
-        style_header={"backgroundColor": "#1a1a1a", "color": "#fff"},
-        page_size=5
-    )
+import dash_ag_grid as dag
 
 
 KEY_COLUMNS = [
@@ -45,24 +11,54 @@ KEY_COLUMNS = [
     'AnalystRatingHold', 'AnalystRatingSell', 'AnalystRatingStrongSell'
 ]
 
+def build_overview_grid(overview_df: pd.DataFrame):
+    # Keep only desired columns
+    display_cols = [c for c in KEY_COLUMNS if c in overview_df.columns]
+    df = overview_df[display_cols].copy()
 
-def build_overview_table(overview_df):
-    # Filter columns to show only the most important ones
-    display_columns = [col for col in KEY_COLUMNS if col in overview_df.columns]
-    # Fill missing values for cleaner table
-    df_display = overview_df[display_columns].fillna('N/A')
-    # Format numbers for readability
-    def prettify(x):
-        if isinstance(x, (int, float)):
-            return f"{x:,.2f}"
-        return x
-    df_display = df_display.applymap(prettify)
-    return dash_table.DataTable(
-        data=df_display.to_dict('records'),
-        columns=[{"name": col, "id": col} for col in display_columns],
-        style_table={"backgroundColor": "#333"},
-        style_cell={"color": "#fff", "backgroundColor": "#222"},
-        style_header={"backgroundColor": "#1a1a1a", "color": "#fff"},
-        style_as_list_view=True,
-        page_size=5
+    # Ensure numeric types for formatting in the grid (strings from API -> numbers)
+    num_cols = [
+        'MarketCapitalization', 'RevenueTTM', 'RevenuePerShareTTM',
+        'ProfitMargin', 'OperatingMarginTTM', 'EBITDA', 'AnalystTargetPrice'
+    ]
+    for c in num_cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors='coerce')
+
+    # Column definitions with formatters and filter/sort
+    column_defs = []
+    for c in display_cols:
+        col_def = {"headerName": c, "field": c, "sortable": True, "filter": True, "resizable": True}
+        if c in ['MarketCapitalization', 'RevenueTTM', 'EBITDA', 'AnalystTargetPrice', 'RevenuePerShareTTM']:
+            # Format as USD; implemented in assets/dashAgGridFunctions.js
+            col_def["type"] = "numericColumn"
+            col_def["valueFormatter"] = {"function": "USD(params.value)"}
+        if c in ['ProfitMargin', 'OperatingMarginTTM']:
+            col_def["type"] = "numericColumn"
+            col_def["valueFormatter"] = {"function": "PCT(params.value)"}
+        if c == 'RevenueTTM':
+            # Flag low revenue
+            col_def["cellClassRules"] = {
+                "low-rev": "params.value != null && Number(params.value) < 1e9"  # < $1B
+            }
+        column_defs.append(col_def)
+
+    default_col_def = {
+        "flex": 1,
+        "minWidth": 140,
+        "suppressMenu": False,
+        "wrapText": False
+    }
+
+    return dag.AgGrid(
+        id="overview-grid",
+        className="ag-theme-quartz-dark",
+        rowData=df.fillna("N/A").to_dict("records"),
+        columnDefs=column_defs,
+        defaultColDef=default_col_def,
+        dashGridOptions={
+            "animateRows": True,
+            "rowSelection": "single",
+        },
+        style={"height": "320px", "width": "100%"}
     )

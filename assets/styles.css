@@ -9,3 +9,9 @@ body {
 .dash-graph {
     background-color: #222;
 }
+
+.low-rev {
+  background-color: #3a2323 !important;
+  color: #ffb3b3 !important;
+  font-weight: 600;
+}

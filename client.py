@@ -8,23 +8,26 @@ from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-load_dotenv() 
+load_dotenv()
 API_KEY = os.getenv("ALPHAVANTAGE_KEY")
 BASE_URL = "https://www.alphavantage.co/query"
 CACHE_DIR = Path("cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DB = CACHE_DIR / "vendor_cache.sqlite"
 TTL_BY_FUNCTION = {
-    "OVERVIEW": 24 * 3600,           # 24h
-    "INCOME_STATEMENT": 24 * 3600,   # 24h
+    "OVERVIEW": 24 * 3600,  # 24h
+    "INCOME_STATEMENT": 24 * 3600,  # 24h
 }
+
 
 def _get_conn():
     return sqlite3.connect(str(CACHE_DB), check_same_thread=False)
 
+
 def _init_cache():
     with _get_conn() as conn:
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS api_cache (
                 function TEXT,
                 symbol   TEXT,
@@ -33,19 +36,24 @@ def _init_cache():
                 timestamp INTEGER,
                 PRIMARY KEY (function, symbol, params_hash)
             )
-        """)
+        """
+        )
+
+
 _init_cache()
+
 
 def _params_hash(params: dict) -> str:
     items = sorted(params.items())
     return "|".join(f"{k}={v}" for k, v in items) if items else "_"
+
 
 def cache_get(function: str, symbol: str, params_extra: dict | None) -> dict | None:
     ph = _params_hash(params_extra or {})
     with _get_conn() as conn:
         row = conn.execute(
             "SELECT response, timestamp FROM api_cache WHERE function=? AND symbol=? AND params_hash=?",
-            (function, symbol, ph)
+            (function, symbol, ph),
         ).fetchone()
     if not row:
         return None
@@ -55,34 +63,44 @@ def cache_get(function: str, symbol: str, params_extra: dict | None) -> dict | N
     except json.JSONDecodeError:
         return None
 
+
 def cache_set(function: str, symbol: str, params_extra: dict | None, payload: dict):
     ph = _params_hash(params_extra or {})
     with _get_conn() as conn:
         conn.execute(
             "REPLACE INTO api_cache (function, symbol, params_hash, response, timestamp) VALUES (?, ?, ?, ?, ?)",
-            (function, symbol, ph, json.dumps(payload), int(time.time()))
+            (function, symbol, ph, json.dumps(payload), int(time.time())),
         )
+
 
 def _build_session() -> requests.Session:
     session = requests.Session()
     retry = Retry(
         total=3,
-        backoff_factor=1,                   # 1s, 2s, 4s
+        backoff_factor=1,  # 1s, 2s, 4s
         status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=["GET"]
+        allowed_methods=["GET"],
     )
     adapter = HTTPAdapter(max_retries=retry)
     session.mount("https://", adapter)
     session.mount("http://", adapter)
     return session
 
+
 SESSION = _build_session()
+
 
 def _is_limit_or_error(payload: dict) -> bool:
     # Handles Limit errors
     return any(k in payload for k in ["Information", "Note", "Error Message"])
 
-def _cached_api_call(function: str, symbol: str, params_extra: dict | None = None, allow_stale_on_limit: bool = True):
+
+def _cached_api_call(
+    function: str,
+    symbol: str,
+    params_extra: dict | None = None,
+    allow_stale_on_limit: bool = True,
+):
     params_extra = params_extra or {}
     ttl = TTL_BY_FUNCTION.get(function, 24 * 3600)
     cached = cache_get(function, symbol, params_extra)
@@ -102,10 +120,16 @@ def _cached_api_call(function: str, symbol: str, params_extra: dict | None = Non
     if _is_limit_or_error(data):
         if cached and allow_stale_on_limit:
             return cached["data"]
-        raise RuntimeError(data.get("Information") or data.get("Note") or data.get("Error Message") or "Unknown API error")
+        raise RuntimeError(
+            data.get("Information")
+            or data.get("Note")
+            or data.get("Error Message")
+            or "Unknown API error"
+        )
 
     cache_set(function, symbol, params_extra, data)
     return data
+
 
 MOCK_OVERVIEW = [
     {
@@ -163,7 +187,7 @@ MOCK_OVERVIEW = [
         "PercentInsiders": "0.50",
         "PercentInstitutions": "91.20",
         "DividendDate": "2025-09-10",
-        "ExDividendDate": "2025-08-16"
+        "ExDividendDate": "2025-08-16",
     },
     {
         "Symbol": "ST",
@@ -220,7 +244,7 @@ MOCK_OVERVIEW = [
         "PercentInsiders": "1.10",
         "PercentInstitutions": "98.00",
         "DividendDate": "2025-08-22",
-        "ExDividendDate": "2025-08-07"
+        "ExDividendDate": "2025-08-07",
     },
     {
         "Symbol": "DD",
@@ -277,7 +301,7 @@ MOCK_OVERVIEW = [
         "PercentInsiders": "0.30",
         "PercentInstitutions": "79.40",
         "DividendDate": "2025-09-15",
-        "ExDividendDate": "2025-08-29"
+        "ExDividendDate": "2025-08-29",
     },
     {
         "Symbol": "CE",
@@ -334,7 +358,7 @@ MOCK_OVERVIEW = [
         "PercentInsiders": "0.80",
         "PercentInstitutions": "95.10",
         "DividendDate": "2025-09-12",
-        "ExDividendDate": "2025-08-23"
+        "ExDividendDate": "2025-08-23",
     },
     {
         "Symbol": "LYB",
@@ -391,19 +415,17 @@ MOCK_OVERVIEW = [
         "PercentInsiders": "0.40",
         "PercentInstitutions": "76.50",
         "DividendDate": "2025-09-05",
-        "ExDividendDate": "2025-08-12"
-    }
+        "ExDividendDate": "2025-08-12",
+    },
 ]
-
 
 
 def get_company_overview(symbol: str) -> dict:
     """Alpha Vantage Fundamental Data: Company Overview (returns raw JSON)."""
-    #return _cached_api_call("OVERVIEW", symbol)
+    # return _cached_api_call("OVERVIEW", symbol)
     return MOCK_OVERVIEW
+
 
 def get_income_statement(symbol: str) -> dict:
     """Alpha Vantage Fundamental Data: Income Statement (returns raw JSON)."""
     return _cached_api_call("INCOME_STATEMENT", symbol)
-
-

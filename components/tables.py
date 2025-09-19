@@ -4,12 +4,26 @@ import dash_ag_grid as dag
 
 
 KEY_COLUMNS = [
-    'Symbol', 'Name', 'Exchange', 'Country', 'Sector', 'Industry',
-    'MarketCapitalization', 'RevenueTTM', 'RevenuePerShareTTM',
-    'ProfitMargin', 'OperatingMarginTTM', 'EBITDA',
-    'AnalystTargetPrice', 'AnalystRatingStrongBuy', 'AnalystRatingBuy',
-    'AnalystRatingHold', 'AnalystRatingSell', 'AnalystRatingStrongSell'
+    "Symbol",
+    "Name",
+    "Exchange",
+    "Country",
+    "Sector",
+    "Industry",
+    "MarketCapitalization",
+    "RevenueTTM",
+    "RevenuePerShareTTM",
+    "ProfitMargin",
+    "OperatingMarginTTM",
+    "EBITDA",
+    "AnalystTargetPrice",
+    "AnalystRatingStrongBuy",
+    "AnalystRatingBuy",
+    "AnalystRatingHold",
+    "AnalystRatingSell",
+    "AnalystRatingStrongSell",
 ]
+
 
 def build_overview_grid(overview_df: pd.DataFrame):
     # Keep only desired columns
@@ -18,25 +32,42 @@ def build_overview_grid(overview_df: pd.DataFrame):
 
     # Ensure numeric types for formatting in the grid (strings from API -> numbers)
     num_cols = [
-        'MarketCapitalization', 'RevenueTTM', 'RevenuePerShareTTM',
-        'ProfitMargin', 'OperatingMarginTTM', 'EBITDA', 'AnalystTargetPrice'
+        "MarketCapitalization",
+        "RevenueTTM",
+        "RevenuePerShareTTM",
+        "ProfitMargin",
+        "OperatingMarginTTM",
+        "EBITDA",
+        "AnalystTargetPrice",
     ]
     for c in num_cols:
         if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors='coerce')
+            df[c] = pd.to_numeric(df[c], errors="coerce")
 
     # Column definitions with formatters and filter/sort
     column_defs = []
     for c in display_cols:
-        col_def = {"headerName": c, "field": c, "sortable": True, "filter": True, "resizable": True}
-        if c in ['MarketCapitalization', 'RevenueTTM', 'EBITDA', 'AnalystTargetPrice', 'RevenuePerShareTTM']:
+        col_def = {
+            "headerName": c,
+            "field": c,
+            "sortable": True,
+            "filter": True,
+            "resizable": True,
+        }
+        if c in [
+            "MarketCapitalization",
+            "RevenueTTM",
+            "EBITDA",
+            "AnalystTargetPrice",
+            "RevenuePerShareTTM",
+        ]:
             # Format as USD; implemented in assets/dashAgGridFunctions.js
             col_def["type"] = "numericColumn"
             col_def["valueFormatter"] = {"function": "USD(params.value)"}
-        if c in ['ProfitMargin', 'OperatingMarginTTM']:
+        if c in ["ProfitMargin", "OperatingMarginTTM"]:
             col_def["type"] = "numericColumn"
             col_def["valueFormatter"] = {"function": "PCT(params.value)"}
-        if c == 'RevenueTTM':
+        if c == "RevenueTTM":
             # Flag low revenue
             col_def["cellClassRules"] = {
                 "low-rev": "params.value != null && Number(params.value) < 1e9"  # < $1B
@@ -47,7 +78,7 @@ def build_overview_grid(overview_df: pd.DataFrame):
         "flex": 1,
         "minWidth": 140,
         "suppressMenu": False,
-        "wrapText": False
+        "wrapText": False,
     }
 
     return dag.AgGrid(
@@ -60,5 +91,5 @@ def build_overview_grid(overview_df: pd.DataFrame):
             "animateRows": True,
             "rowSelection": "single",
         },
-        style={"height": "320px", "width": "100%"}
+        style={"height": "320px", "width": "100%"},
     )

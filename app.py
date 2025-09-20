@@ -8,15 +8,14 @@ from components.charts import (
     create_bubble_chart,
     CHART_TARGET_OPTIONS,
 )
-from client import get_company_overview, get_income_statement, MOCK_OVERVIEW
+from client import get_company_overview, MOCK_OVERVIEW
 
 SYMBOLS = ["TEL", "ST", "DD", "CE", "LYB"]
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 app.title = "WindBorne Vendor Dashboard"
 
-# Mock data or real API calls
-
+overviews = [get_company_overview(s) for s in SYMBOLS]
 overview_df = pd.DataFrame(MOCK_OVERVIEW)
 overview_table = build_overview_grid(overview_df)
 
